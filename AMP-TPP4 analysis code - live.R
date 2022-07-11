@@ -73,6 +73,12 @@ raw_data[,"participant_ID"] = as.factor(raw_data[,"participant_ID"])
 # sides matching as a numerical variable
 raw_data[,"sides_match_numeric"] = as.numeric(as.logical(raw_data[,"sides_match"]))
 
+# sides matching sign for the cumulative sum of sign plot
+raw_data = raw_data %>% 
+  mutate(sides_match_sign = recode(sides_match_numeric,
+                                   "0" = -1,
+                                   "1" = 1))
+
 # Only include sessions conducted with the AMP-TPP4 live account
 # live account experimenter ID hash: b4ddf1fa1aa4b5153dedae5fc44b21ad6a854dccacd4436742dda1013138dc13
 data_nontest = raw_data %>% 
@@ -101,10 +107,17 @@ data_nontest_trials_nonerotic = data_nontest_trials[data_nontest_trials[, "rewar
 # drop unused factor levels
 data_nontest_trials_nonerotic[,"participant_ID"] = droplevels(data_nontest_trials_nonerotic[,"participant_ID"])
 
+
 # drop any data that is above the maximum trial size
 if(nrow(data_nontest_trials_nonerotic) > max_num_trials){
   data_nontest_trials_nonerotic_maxtrialnum = data_nontest_trials_nonerotic[1:max_num_trials,]
 } else {data_nontest_trials_nonerotic_maxtrialnum = data_nontest_trials_nonerotic}
+
+
+# cumulative sum of success sign
+data_nontest_trials_erotic_maxtrialnum$sides_match_sign_cumsum = cumsum(data_nontest_trials_erotic_maxtrialnum$sides_match_sign)
+data_nontest_trials_nonerotic_maxtrialnum$sides_match_sign_cumsum = cumsum(data_nontest_trials_nonerotic_maxtrialnum$sides_match_sign)
+
 
 ######################################################################
 #                                                                    #
@@ -420,6 +433,35 @@ wide_plot_data_nonerotic %>%
   scale_x_continuous(expand = c(0, 0)) +
   ylim(c(0.46, 0.54))
 
+
+######################################################################
+#                                                                    #
+#                    Cumulative sum of sign plot                     #
+#                                                                    #
+######################################################################
+
+
+
+cumulative_sums = c(
+  data_nontest_trials_erotic_maxtrialnum$sides_match_sign_cumsum,
+  data_nontest_trials_nonerotic_maxtrialnum$sides_match_sign_cumsum
+)
+
+cumulative_sums_origin = c(rep("erotic", length(data_nontest_trials_erotic_maxtrialnum$sides_match_sign_cumsum)),
+                                   rep("nonerotic", length(data_nontest_trials_nonerotic_maxtrialnum$sides_match_sign_cumsum)))
+
+trial_number = c(1:length(data_nontest_trials_erotic_maxtrialnum$sides_match_sign_cumsum), 
+                         1:length(data_nontest_trials_nonerotic_maxtrialnum$sides_match_sign_cumsum))
+
+
+
+cumulative_sums_dataframe = data.frame(cumulative_sums = cumulative_sums, trial_number = trial_number, origin = cumulative_sums_origin)
+
+cumulative_sums_dataframe %>% 
+  ggplot() +
+  aes(y = cumulative_sums, x = trial_number, color = origin) +
+  scale_x_continuous(expand = c(0, 0)) +
+  geom_line()
 
 
 ######################################################################
